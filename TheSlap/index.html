@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TheSlap — Single-File MVP (Usernames, Likes, Comments)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg: #0b1220; --muted:#93a1b1; }
+    html, body { height: 100%; background: radial-gradient(1200px 600px at 10% 0%, #11153a 0%, #0e183b 50%, #0a1230 100%); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; color:#e5e7eb; }
+    .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.08); }
+    .btn { padding:.5rem 1rem; border-radius:1rem; font-weight:600; transition:.2s; cursor:pointer }
+    .btn-primary { background:#6366f1; color:#fff }
+    .btn-ghost { background:rgba(255,255,255,.08); color:#fff }
+    .chip { font-size:.75rem; padding:.25rem .6rem; border-radius:9999px; background:rgba(255,255,255,.12) }
+    .link { color:#c7d2fe; text-decoration:underline }
+    .avatar { width:2.25rem; height:2.25rem; border-radius:9999px; object-fit:cover }
+    .ring-slap { box-shadow: 0 0 0 2px rgba(99,102,241,0.35); }
+    .modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); z-index:50 }
+    .modal.show { display:flex }
+  </style>
+</head>
+<body>
+  <!-- Top bar -->
+  <header class="sticky top-0 z-20 glass">
+    <div class="max-w-5xl mx-auto flex items-center gap-3 p-3">
+      <div class="w-8 h-8 rounded-xl bg-indigo-500 grid place-items-center font-black">S</div>
+      <h1 class="text-lg font-bold tracking-tight">TheSlap</h1>
+      <div class="ml-auto flex items-center gap-3" id="userPanel" hidden>
+        <img id="mePhoto" class="avatar" src="" alt=""/>
+        <div class="text-sm">
+          <div id="meName" class="font-semibold"></div>
+          <div id="meEmail" class="text-slate-400 text-xs"></div>
+        </div>
+        <button id="btnSignOut" class="btn btn-ghost">Sign out</button>
+      </div>
+    </div>
+    <div class="h-1" style="background:linear-gradient(90deg,#ff5ea8,#ffb44a,#ffd93d,#35e0b9,#51b9ff,#7a7dff)"></div>
+  </header>
+
+  <!-- Auth gate -->
+  <section id="auth" class="max-w-md mx-auto mt-16 text-center">
+    <div class="glass rounded-3xl p-8">
+      <h2 class="text-2xl font-bold mb-2">Welcome to TheSlap</h2>
+      <p class="text-slate-400 mb-6">Sign in, pick a username, and start posting.</p>
+      <div class="flex flex-col gap-3">
+        <button id="btnGoogle" class="btn btn-primary">Continue with Google</button>
+        <div class="text-slate-400 text-xs">or</div>
+        <input id="email" class="w-full rounded-2xl bg-white/10 px-3 py-2" placeholder="Email" />
+        <input id="password" type="password" class="w-full rounded-2xl bg-white/10 px-3 py-2" placeholder="Password" />
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btnEmailSignUp" class="btn btn-ghost">Sign up</button>
+          <button id="btnEmailSignIn" class="btn btn-ghost">Sign in</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- App -->
+  <main id="app" class="max-w-5xl mx-auto mt-6 grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6" hidden>
+    <!-- Sidebar -->
+    <aside class="glass rounded-3xl p-5 h-max">
+      <div class="flex items-center gap-3 mb-4">
+        <img id="mePhoto2" class="avatar" src="" alt=""/>
+        <div>
+          <div id="meName2" class="font-semibold"></div>
+          <div class="text-xs text-slate-400">Signed in</div>
+        </div>
+      </div>
+      <div class="space-y-3">
+        <div class="text-slate-400 text-sm uppercase tracking-wider">Friends</div>
+        <div class="flex gap-2">
+          <input id="friendEmail" class="flex-1 rounded-2xl bg-white/10 px-3 py-2 text-sm" placeholder="Add friend by email" />
+          <button id="btnAddFriend" class="btn btn-primary">Add</button>
+        </div>
+        <div id="friendRequests" class="space-y-2"></div>
+        <div class="text-slate-400 text-sm uppercase tracking-wider mt-4">Your friends</div>
+        <div id="friends" class="space-y-2"></div>
+      </div>
+    </aside>
+
+    <!-- Feed column -->
+    <section class="space-y-4">
+      <!-- Composer -->
+      <div class="glass rounded-3xl p-5">
+        <div class="flex items-start gap-3">
+          <img id="mePhoto3" class="avatar mt-1" src="" alt=""/>
+          <div class="flex-1">
+            <textarea id="composer" rows="3" class="w-full rounded-2xl bg-white/10 px-3 py-2" placeholder="What's happening?"></textarea>
+            <div class="flex items-center justify-between mt-2">
+              <div class="flex items-center gap-3 text-sm">
+                <label class="cursor-pointer chip">
+                  <input type="file" id="imageInput" accept="image/*" class="hidden" />
+                  Attach image
+                </label>
+                <span id="imageName" class="text-slate-400 text-xs"></span>
+              </div>
+              <button id="btnPost" class="btn btn-primary">Post</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feed -->
+      <div id="feed" class="space-y-4"></div>
+    </section>
+  </main>
+
+  <!-- Username modal -->
+  <div id="usernameModal" class="modal">
+    <div class="glass rounded-3xl p-6 w-[360px]">
+      <h3 class="text-xl font-bold mb-2">Pick a username</h3>
+      <p class="text-slate-400 text-sm mb-3">Only letters, numbers, and underscores. 3–20 chars. Shown as @username.</p>
+      <div class="flex gap-2">
+        <input id="usernameInput" class="flex-1 rounded-2xl bg-white/10 px-3 py-2" placeholder="your_name"/>
+        <button id="btnClaimUsername" class="btn btn-primary">Claim</button>
+      </div>
+      <div id="usernameStatus" class="text-sm mt-2 text-slate-300"></div>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs (CDN, no NPM needed) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+  <script>
+    // Paste your Firebase config (Console → Project settings → Your apps → Web → CDN)
+    const firebaseConfig = {
+      apiKey: "PASTE_ME",
+      authDomain: "PASTE_ME.firebaseapp.com",
+      projectId: "PASTE_ME",
+      storageBucket: "PASTE_ME.appspot.com",
+      messagingSenderId: "PASTE_ME",
+      appId: "PASTE_ME"
+    };
+
+    // Init Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    // ---------- Utilities ----------
+    const $ = (sel) => document.querySelector(sel);
+    const timeAgo = (ts) => {
+      const d = ts instanceof Date ? ts : ts?.toDate?.() || new Date();
+      const diff = (Date.now() - d.getTime()) / 1000;
+      const units = [[60,'s'],[60,'m'],[24,'h'],[7,'d'],[4.348,'w'],[12,'mo']];
+      let v = diff, u = 's';
+      for (const [k,l] of units) { if (v < k) { u = l; break; } v/=k; u = l; }
+      return `${Math.max(1, Math.floor(v))}${u}`;
+    };
+    const escapeHtml = (str)=> String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s]));
+    const linkify = (text)=>{
+      const urlRegex = /(https?:\/\/[\w\-\.\/?#=&%+]+)/g;
+      return text.replace(urlRegex, '<a class="link" target="_blank" href="$1">$1<\/a>');
+    };
+
+    // ---------- Auth ----------
+    const authSection = $('#auth');
+    const app = $('#app');
+    const userPanel = $('#userPanel');
+
+    const renderUser = async (user) => {
+      if (!user) return;
+      const photo = user.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.displayName || user.email)}`;
+      $('#mePhoto').src = photo; $('#mePhoto2').src = photo; $('#mePhoto3').src = photo;
+      const me = await db.collection('users').doc(user.uid).get();
+      const uname = me.data()?.username;
+      $('#meName').textContent = uname ? `@${uname}` : (user.displayName || 'No name');
+      $('#meName2').textContent = uname ? `@${uname}` : (user.displayName || 'No name');
+      $('#meEmail').textContent = user.email;
+    };
+
+    $('#btnGoogle').onclick = async () => { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); };
+    $('#btnEmailSignUp').onclick = async () => {
+      const email = $('#email').value.trim(); const pw = $('#password').value;
+      if (!email || !pw) return alert('Enter email & password');
+      await auth.createUserWithEmailAndPassword(email, pw);
+    };
+    $('#btnEmailSignIn').onclick = async () => {
+      const email = $('#email').value.trim(); const pw = $('#password').value;
+      if (!email || !pw) return alert('Enter email & password');
+      await auth.signInWithEmailAndPassword(email, pw);
+    };
+    $('#btnSignOut').onclick = () => auth.signOut();
+
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        authSection.hidden = true; app.hidden = false; userPanel.hidden = true; // hide until username picked
+        const meRef = db.collection('users').doc(user.uid);
+        const meSnap = await meRef.get();
+        if (!meSnap.exists) {
+          await meRef.set({ email: user.email, name: user.displayName || '', photo: user.photoURL || '', createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+        await showUsernameModalIfNeeded(user);
+        await renderUser(user);
+        userPanel.hidden = false;
+        subscribeFeed();
+        subscribeFriendData();
+      } else {
+        authSection.hidden = false; app.hidden = true; userPanel.hidden = true;
+      }
+    });
+
+    // ---------- Username reservation ----------
+    const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
+    const normalizeUsername = (s) => s.trim().toLowerCase();
+
+    async function showUsernameModalIfNeeded(user){
+      const meRef = db.collection('users').doc(user.uid);
+      const me = await meRef.get();
+      if (me.exists && me.data().username) { app.hidden = false; return; }
+
+      const modal = $('#usernameModal');
+      const input = $('#usernameInput');
+      const btn = $('#btnClaimUsername');
+      const status = $('#usernameStatus');
+      modal.classList.add('show');
+      status.textContent = '';
+      input.value = (user.displayName || '').replace(/\s+/g,'_').toLowerCase().slice(0,20);
+
+      btn.onclick = async () => {
+        const raw = input.value;
+        if (!USERNAME_RE.test(raw)) { status.textContent = 'Use 3–20 letters/numbers/underscores.'; return; }
+        const uname = normalizeUsername(raw);
+        status.textContent = 'Checking…';
+        const unameRef = db.collection('usernames').doc(uname);
+        const taken = await unameRef.get();
+        if (taken.exists) { status.textContent = 'Sorry, that username is taken.'; return; }
+        try {
+          await db.runTransaction(async (tx)=>{
+            const tDoc = await tx.get(unameRef);
+            if (tDoc.exists) throw new Error('taken');
+            tx.set(unameRef, { uid: user.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+            tx.update(meRef, { username: uname });
+          });
+          status.textContent = 'Username saved!';
+          modal.classList.remove('show');
+          app.hidden = false;
+          await renderUser(user);
+        } catch(e){ status.textContent = e.message==='taken' ? 'That username was just taken. Try another.' : 'Could not save. Try again.'; }
+      };
+    }
+
+    // ---------- Posting ----------
+    let selectedFile = null;
+    $('#imageInput').addEventListener('change', (e) => {
+      selectedFile = e.target.files[0] || null;
+      $('#imageName').textContent = selectedFile ? selectedFile.name : '';
+    });
+
+    $('#btnPost').onclick = async () => {
+      const user = auth.currentUser; if (!user) return;
+      const text = $('#composer').value.trim();
+      if (!text && !selectedFile) return alert('Write something or attach an image.');
+
+      // fetch username once
+      const me = await db.collection('users').doc(user.uid).get();
+      const username = me.data()?.username || (user.displayName || user.email);
+
+      let imageUrl = '';
+      if (selectedFile) {
+        const path = `posts/${user.uid}/${Date.now()}_${selectedFile.name}`;
+        const snap = await storage.ref().child(path).put(selectedFile);
+        imageUrl = await snap.ref.getDownloadURL();
+      }
+
+      await db.collection('posts').add({
+        authorId: user.uid,
+        authorName: user.displayName || user.email,
+        authorUsername: username,
+        authorPhoto: user.photoURL || '',
+        text,
+        imageUrl,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        likeCount: 0,
+        commentCount: 0
+      });
+
+      $('#composer').value = '';
+      selectedFile = null; $('#imageName').textContent = '';
+    };
+
+    // ---------- Feed (realtime) ----------
+    let unsubFeed = null;
+    function subscribeFeed(friendIds=[]) {
+      if (unsubFeed) unsubFeed();
+      unsubFeed = db.collection('posts')
+        .orderBy('createdAt', 'desc').limit(50)
+        .onSnapshot((qs) => {
+          const me = auth.currentUser?.uid;
+          const posts = [];
+          qs.forEach(doc => {
+            const data = {id: doc.id, ...doc.data()};
+            if (!me) return;
+            if (data.authorId === me || friendIds.includes(data.authorId)) posts.push(data);
+          });
+          renderFeed(posts);
+        });
+    }
+
+    function renderFeed(posts) {
+      const feed = $('#feed');
+      feed.innerHTML = '';
+      if (!posts.length) {
+        feed.innerHTML = `<div class="glass p-6 rounded-3xl text-center text-slate-400">No posts yet. Say hi! 👋</div>`;
+        return;
+      }
+      for (const p of posts) feed.appendChild(postCard(p));
+    }
+
+    function postCard(p) {
+      const el = document.createElement('article');
+      el.className = 'glass rounded-3xl p-5';
+      el.innerHTML = `
+        <div class="flex gap-3">
+          <img class="avatar" src="${p.authorPhoto || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(p.authorName || 'User')}`}" alt=""/>
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <div class="font-semibold">${escapeHtml(p.authorUsername ? '@'+p.authorUsername : (p.authorName || 'Someone'))}</div>
+              <span class="text-slate-400 text-xs">• ${p.createdAt ? timeAgo(p.createdAt) : 'now'}</span>
+            </div>
+            <div class="mt-1 whitespace-pre-wrap">${linkify(escapeHtml(p.text || ''))}</div>
+            ${p.imageUrl ? `<img src="${p.imageUrl}" class="rounded-2xl mt-3 max-h-[420px] object-cover w-full" alt=""/>` : ''}
+            <div class="flex gap-3 mt-3 text-sm text-slate-300">
+              <button class="chip" data-action="like">👍 <span>${p.likeCount||0}</span> <span class="liked-flag" style="display:none">• Liked</span></button>
+              <button class="chip" data-action="comment">💬 <span>${p.commentCount||0}</span></button>
+              <button class="chip" data-action="delete">🗑️</button>
+            </div>
+            <div class="mt-3 space-y-2" data-role="comments"></div>
+            <div class="mt-3 flex gap-2">
+              <input class="flex-1 rounded-2xl bg-white/10 px-3 py-2 text-sm" placeholder="Write a comment…"/>
+              <button class="btn btn-ghost">Send</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const likeBtn = el.querySelector('[data-action="like"]');
+      const likedFlag = el.querySelector('.liked-flag');
+      const commentBtn = el.querySelector('[data-action="comment"]');
+      const deleteBtn = el.querySelector('[data-action="delete"]');
+      const commentsList = el.querySelector('[data-role="comments"]');
+      const input = el.querySelector('input');
+      const send = el.querySelector('button.btn');
+
+      // Realtime likes/comments counts
+      db.collection('posts').doc(p.id).onSnapshot((d)=>{
+        const data = d.data(); if (!data) return; 
+        likeBtn.querySelector('span').textContent = data.likeCount || 0;
+        commentBtn.querySelector('span').textContent = data.commentCount || 0;
+      });
+
+      // Whether *I* liked
+      const me = auth.currentUser;
+      if (me) {
+        db.collection('posts').doc(p.id).collection('likes').doc(me.uid)
+          .onSnapshot((doc)=>{
+            const liked = doc.exists;
+            likedFlag.style.display = liked ? '' : 'none';
+            likeBtn.classList.toggle('ring-slap', liked);
+          });
+      }
+
+      // Load last 5 comments
+      db.collection('posts').doc(p.id).collection('comments')
+        .orderBy('createdAt','desc').limit(5)
+        .onSnapshot((qs)=>{
+          commentsList.innerHTML = '';
+          qs.forEach(doc=>{
+            const c = doc.data();
+            const row = document.createElement('div');
+            row.className = 'text-sm text-slate-200';
+            const author = c.authorUsername ? '@'+c.authorUsername : (c.authorName||'');
+            row.innerHTML = `<span class="font-semibold">${escapeHtml(author)}</span>: ${escapeHtml(c.text||'')}`;
+            commentsList.appendChild(row);
+          });
+        });
+
+      likeBtn.onclick = async () => {
+        const me = auth.currentUser; if (!me) return;
+        const likeRef = db.collection('posts').doc(p.id).collection('likes').doc(me.uid);
+        const likeDoc = await likeRef.get();
+        await db.runTransaction(async (tx)=>{
+          const postRef = db.collection('posts').doc(p.id);
+          const postDoc = await tx.get(postRef);
+          let likeCount = postDoc.data().likeCount || 0;
+          if (likeDoc.exists) { tx.delete(likeRef); likeCount = Math.max(0, likeCount-1); }
+          else { tx.set(likeRef, {uid: me.uid, at: firebase.firestore.FieldValue.serverTimestamp()}); likeCount += 1; }
+          tx.update(postRef, { likeCount });
+        });
+      };
+
+      send.onclick = async () => {
+        const me = auth.currentUser; if (!me) return;
+        const text = input.value.trim(); if (!text) return;
+        const userDoc = await db.collection('users').doc(me.uid).get();
+        const uname = userDoc.data()?.username || (me.displayName || me.email);
+        const postRef = db.collection('posts').doc(p.id);
+        await postRef.collection('comments').add({
+          uid: me.uid,
+          authorName: me.displayName || me.email,
+          authorUsername: uname,
+          text,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        await postRef.update({ commentCount: firebase.firestore.FieldValue.increment(1) });
+        input.value = '';
+      };
+
+      deleteBtn.onclick = async () => {
+        const me = auth.currentUser; if (!me) return;
+        const isOwner = p.authorId === me.uid;
+        if (!isOwner) return alert('You can only delete your own posts');
+        if (!confirm('Delete this post?')) return;
+        await db.collection('posts').doc(p.id).delete();
+      };
+
+      return el;
+    }
+
+    // ---------- Friends ----------
+    const friendsEl = $('#friends');
+    const requestsEl = $('#friendRequests');
+
+    async function subscribeFriendData(){
+      const me = auth.currentUser; if (!me) return;
+
+      // Incoming friend requests
+      db.collection('friendRequests').where('to','==',me.email)
+        .onSnapshot((qs)=>{
+          requestsEl.innerHTML = '';
+          qs.forEach(doc=>{
+            const fr = {id: doc.id, ...doc.data()};
+            const row = document.createElement('div');
+            row.className = 'flex items-center justify-between rounded-2xl bg-white/10 px-3 py-2';
+            row.innerHTML = `<div class="text-sm"><span class="font-semibold">${escapeHtml(fr.fromName||fr.from)}</span> wants to connect</div>
+                             <div class="flex gap-2">
+                               <button class="btn btn-primary" data-accept>Accept</button>
+                               <button class="btn btn-ghost" data-decline>Decline</button>
+                             </div>`;
+            row.querySelector('[data-accept]').onclick = async ()=>{
+              await acceptFriend(fr);
+              await db.collection('friendRequests').doc(fr.id).delete();
+            };
+            row.querySelector('[data-decline]').onclick = async ()=>{
+              await db.collection('friendRequests').doc(fr.id).delete();
+            };
+            requestsEl.appendChild(row);
+          });
+        });
+
+      // Friend list
+      db.collection('friends').doc(me.uid).collection('list')
+        .onSnapshot((qs)=>{
+          const ids = [];
+          friendsEl.innerHTML = '';
+          qs.forEach(doc=>{ ids.push(doc.id); friendsEl.appendChild(friendChip(doc.id, doc.data())); });
+          subscribeFeed(ids);
+        });
+    }
+
+    $('#btnAddFriend').onclick = async () => {
+      const me = auth.currentUser; if (!me) return;
+      const email = $('#friendEmail').value.trim();
+      if (!email) return;
+      if (email === me.email) return alert("That's you!");
+      const qs = await db.collection('users').where('email','==',email).limit(1).get();
+      if (qs.empty) { alert('User not found'); return; }
+      const toUser = qs.docs[0];
+      await db.collection('friendRequests').add({
+        from: me.email,
+        fromName: me.displayName || me.email,
+        to: email,
+        toUid: toUser.id,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      $('#friendEmail').value='';
+      alert('Request sent!');
+    };
+
+    async function acceptFriend(fr){
+      const me = auth.currentUser; if (!me) return;
+      const batch = db.batch();
+      batch.set(db.collection('friends').doc(me.uid).collection('list').doc(fr.toUid || fr.fromUid || fr.from), { email: fr.from, since: firebase.firestore.FieldValue.serverTimestamp() });
+      const qs = await db.collection('users').where('email','==',me.email).limit(1).get();
+      const meUid = qs.empty ? me.uid : qs.docs[0].id;
+      batch.set(db.collection('friends').doc(fr.toUid).collection('list').doc(meUid), { email: me.email, since: firebase.firestore.FieldValue.serverTimestamp() });
+      await batch.commit();
+    }
+
+    function friendChip(uid, data){
+      const row = document.createElement('div');
+      row.className = 'flex items-center justify-between rounded-2xl bg-white/10 px-3 py-2';
+      row.innerHTML = `<div class="text-sm">👤 ${escapeHtml(data.email||uid)}</div>`;
+      return row;
+    }
+  </script>
+</body>
+</html>
